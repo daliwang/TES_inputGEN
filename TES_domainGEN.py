@@ -1,7 +1,7 @@
 
 # utility to generate 1D and 2D domain for TESSFA
 
-import os 
+import os, sys 
 import math
 import netCDF4 as nc
 import numpy as np
@@ -15,14 +15,14 @@ from datetime import datetime
 
 def calculate_area(xv0, yv0, xv1, yv1, xv2, yv2, xv3, yv3):
 
-    #Proj4: +proj=lcc +lon_0=-100 +lat_1=25 +lat_2=60 +k=1 +x_0=0 +y_0=0 +R=6378137 +f=298.257223563 +units=m  +no_defs
+    '''#Proj4: +proj=lcc +lon_0=-100 +lat_1=25 +lat_2=60 +k=1 +x_0=0 +y_0=0 +R=6378137 +f=298.257223563 +units=m  +no_defs
     geoxy_proj_str = "+proj=lcc +lon_0=-100 +lat_0=42.5 +lat_1=25 +lat_2=60 +x_0=0 +y_0=0 +R=6378137 +f=298.257223563 +units=m +no_defs"
     geoxyProj = CRS.from_proj4(geoxy_proj_str)
     # EPSG: 4326
     # Proj4: +proj=longlat +datum=WGS84 +no_defs
     lonlatProj = CRS.from_epsg(4326) # in lon/lat coordinates
     Txy2lonlat = Transformer.from_proj(geoxyProj, lonlatProj, always_xy=True)
-    Tlonlat2xy = Transformer.from_proj(lonlatProj, geoxyProj, always_xy=True)
+    Tlonlat2xy = Transformer.from_proj(lonlatProj, geoxyProj, always_xy=True)'''
     
     # Step 1: Calculate the average value (Lat1) of the latitudes of two upper corners
     Lat1 = (yv0 + yv1) / 2
@@ -30,7 +30,7 @@ def calculate_area(xv0, yv0, xv1, yv1, xv2, yv2, xv3, yv3):
     # Step 2: Calculate the average value (Lat2) of the latitudes of two lower corners
     Lat2 = (yv2 + yv3) / 2
 
-    # Step 3: Calculate the dLat = Lat1-Lat2
+    # Step 3: Calculate the dLat = Lat1-Lat2 in degree 
     dLat = Lat1 - Lat2
 
     # Step 4: Calculate the average value (Lon1) of the longitude of two left corners
@@ -39,26 +39,16 @@ def calculate_area(xv0, yv0, xv1, yv1, xv2, yv2, xv3, yv3):
     # Step 5: Calculate the average value (Lon2) of the longitude of two right corners
     Lon2 = (xv1 + xv2) / 2
 
-    # Step 6: Calculate the dLon = Lon1-Lon2
+    # Step 6: Calculate the dLon = Lon1-Lon2 in degree
     dLon = Lon1 - Lon2
 
     # Step 7: Calculate the area
     area_arcad2 = abs((dLon / 180) * (dLat / 180))
 
-    # Step 8: Calculate the area in LCC projection (km2)
-    
-    dX1, dY1 = Tlonlat2xy.transform(Lon1,dLat)
-    dX2, dY2 = Tlonlat2xy.transform(Lon2,dLat)
-    dX3, dY3 = Tlonlat2xy.transform(dLon,Lat1)
-    dX4, dY4 = Tlonlat2xy.transform(dLon,Lat2)
-    
-    area_km2 = abs(((dX1 - dX2)/1000) * ((dY1 - dY2) / 1000))
-
-    return area_arcad2, area_km2
+    return area_arcad2
 
 
-
-def domain_save_1dTES(output_path, total_rows, total_cols, data, lon, lat, XC, YC):
+def domain_save_1dTES(output_path, domain_name, total_rows, total_cols, data, lon, lat, XC, YC):
 
     # This function uses (lon, lat) to create a domain for TES project
     # total_rows and total_cols are rows and cols from 2D Forcing dataset
@@ -69,7 +59,7 @@ def domain_save_1dTES(output_path, total_rows, total_cols, data, lon, lat, XC, Y
     current_date = datetime.now()
     # Format date to mmddyyyy
     formatted_date = current_date.strftime('%y%m%d')
-    
+    '''
     #Proj4: +proj=lcc +lon_0=-100 +lat_1=25 +lat_2=60 +k=1 +x_0=0 +y_0=0 +R=6378137 +f=298.257223563 +units=m  +no_defs
     geoxy_proj_str = "+proj=lcc +lon_0=-100 +lat_0=42.5 +lat_1=25 +lat_2=60 +x_0=0 +y_0=0 +R=6378137 +f=298.257223563 +units=m +no_defs"
     geoxyProj = CRS.from_proj4(geoxy_proj_str)
@@ -78,9 +68,9 @@ def domain_save_1dTES(output_path, total_rows, total_cols, data, lon, lat, XC, Y
     lonlatProj = CRS.from_epsg(4326) # in lon/lat coordinates
     Txy2lonlat = Transformer.from_proj(geoxyProj, lonlatProj, always_xy=True)
     Tlonlat2xy = Transformer.from_proj(lonlatProj, geoxyProj, always_xy=True)
-
     XC_LCC,YC_LCC = Tlonlat2xy.transform(XC,YC)
 
+    '''
     # add the gridcell IDs. and its x/y indices (will be used to create 2D output)
     total_gridcells = total_rows * total_cols
     grid_ids = np.linspace(0, total_gridcells-1, total_gridcells, dtype=int)
@@ -95,9 +85,9 @@ def domain_save_1dTES(output_path, total_rows, total_cols, data, lon, lat, XC, Y
     landmask = np.where(~np.isnan(data[0]), 1, 0)
     landfrac = landmask.astype(float)*1.0
     
-    # area in km2 --> in arcrad2
-    area_km2 = 16.0 # 4km by 4km resolution
-    '''offset = 2000.0 # distance (m) to the center of the grid
+    # area in arcrad2
+    '''area_km2 = 16.0 # 4km by 4km resolution
+    offset = 2000.0 # distance (m) to the center of the grid
     side_km = math.sqrt(float(area_km2))
     lat[lat==90.0]=lat[lat==90.0]-0.00001
     lat[lat==-90.0]=lat[lat==-90.0]-0.00001
@@ -120,16 +110,16 @@ def domain_save_1dTES(output_path, total_rows, total_cols, data, lon, lat, XC, Y
     grid_yids_arr = grid_yids[masked]
     XC_arr = XC[masked]
     YC_arr = YC[masked]
-    XC_LCC_arr = XC_LCC[masked]
-    YC_LCC_arr = YC_LCC[masked]
+    #XC_LCC_arr = XC_LCC[masked]
+    #YC_LCC_arr = YC_LCC[masked]
     
-    file_name = output_path + 'domain.lnd.Daymet_GSWP3_TESSFA.4km.1d.c'+ formatted_date +'.nc'
+    file_name = output_path  + 'domain.lnd.' + domain_name + '.4km.1d.c'+ formatted_date +'.nc'
     print("The domain file is " + file_name)
 
     # Open a new NetCDF file to write the domain information. For format, you can choose from
     # 'NETCDF3_CLASSIC', 'NETCDF3_64BIT', 'NETCDF4_CLASSIC', and 'NETCDF4'
     w_nc_fid = nc.Dataset(file_name, 'w', format='NETCDF4')
-    w_nc_fid.title = '1D domain file for the Daymat TESSFA region'
+    w_nc_fid.title = '1D domain file for ' + domain_name
 
     # Create new dimensions of new coordinate system
     x_dim = w_nc_fid.createDimension('x', total_cols)
@@ -177,6 +167,7 @@ def domain_save_1dTES(output_path, total_rows, total_cols, data, lon, lat, XC, Y
     w_nc_var.units = "degrees_north"        
     w_nc_fid.variables['yc'][...] = YC_arr
         
+    '''
     # create the XC, YC variable
     w_nc_var = w_nc_fid.createVariable('xc_LCC', np.double, ('nj','ni'))
     w_nc_var.long_name = 'X of land gridcell center (Lambert Conformal Conic), increasing from west to east'
@@ -188,7 +179,7 @@ def domain_save_1dTES(output_path, total_rows, total_cols, data, lon, lat, XC, Y
     w_nc_var.long_name = 'Y of land gridcell center (Lambert Conformal Conic), decreasing from north to south'
     w_nc_var.units = "m"        
     w_nc_fid.variables['yc_LCC'][...] = YC_LCC_arr
-
+    '''
     #
     w_nc_var = w_nc_fid.createVariable('xv', np.double, ('nv','nj','ni'))
     w_nc_var.long_name = 'longitude of land gridcell verticles (GCS_WGS_84), increasing from west to east'
@@ -210,7 +201,7 @@ def domain_save_1dTES(output_path, total_rows, total_cols, data, lon, lat, XC, Y
     w_nc_fid.variables['xv'][3,...] = xv3
     w_nc_fid.variables['yv'][3,...] = yv3
 
-    area_arcad2, area_km2 = calculate_area(xv0, yv0, xv1, yv1, xv2, yv2, xv3, yv3)
+    area_arcad2  = calculate_area(xv0, yv0, xv1, yv1, xv2, yv2, xv3, yv3)
 
     w_nc_var = w_nc_fid.createVariable('area', np.double, ('nj','ni'))
     w_nc_var.long_name = 'Area of land gridcells'
@@ -218,11 +209,11 @@ def domain_save_1dTES(output_path, total_rows, total_cols, data, lon, lat, XC, Y
     w_nc_var.units = "arcad^2"
     w_nc_fid.variables['area'][...] = area_arcad2
 
-    w_nc_var = w_nc_fid.createVariable('area_LCC', np.double, ('nj','ni'))
+    '''w_nc_var = w_nc_fid.createVariable('area_LCC', np.double, ('nj','ni'))
     w_nc_var.long_name = 'Area of land gridcells (Lambert Conformal Conic)'
     w_nc_var.coordinate = 'xc_LCC yc_LCC' 
     w_nc_var.units = "km^2"
-    w_nc_fid.variables['area_LCC'][...] = area_km2
+    w_nc_fid.variables['area_LCC'][...] = area_km2'''
 
     w_nc_var = w_nc_fid.createVariable('mask', np.int32, ('nj','ni'))
     w_nc_var.long_name = 'mask of land gridcells (1 means land)'
@@ -235,7 +226,7 @@ def domain_save_1dTES(output_path, total_rows, total_cols, data, lon, lat, XC, Y
     w_nc_var.units = "unitless" ;        
     w_nc_fid.variables['frac'][...] = landfrac_arr
 
-    w_nc_var = w_nc_fid.createVariable('lambert_conformal_conic', np.short)
+    '''w_nc_var = w_nc_fid.createVariable('lambert_conformal_conic', np.short)
     w_nc_var.grid_mapping_name = "lambert_conformal_conic"
     w_nc_var.longitude_of_central_meridian = -100. 
     w_nc_var.latitude_of_projection_origin = 42.5         
@@ -243,32 +234,18 @@ def domain_save_1dTES(output_path, total_rows, total_cols, data, lon, lat, XC, Y
     w_nc_var.false_northing = 0.
     w_nc_var.standard_parallel = 25., 60.          
     w_nc_var.semi_major_axis = 6378137.
-    w_nc_var.inverse_flattening = 298.257223563
+    w_nc_var.inverse_flattening = 298.257223563'''
 
     w_nc_fid.close()  # close the new file  
 
 
-def domain_save_2dTES(output_path, total_rows, total_cols, data, lon, lat, XC, YC):
-
+def domain_save_2dTES(output_path, domain_name, total_rows, total_cols, data, lon, lat, XC, YC):
 
     # Get current date
     current_date = datetime.now()
     # Format date to mmddyyyy
     formatted_date = current_date.strftime('%y%m%d')
 
-    # It appears that lon/lat in original GSWP3/daymet4 dataset are questionable (unclear of what datanum used). 
-    # Instead here redo lon/lat from XC/YC
-    #Proj4: +proj=lcc +lon_0=-100 +lat_1=25 +lat_2=60 +k=1 +x_0=0 +y_0=0 +R=6378137 +f=298.257223563 +units=m  +no_defs
-    geoxy_proj_str = "+proj=lcc +lon_0=-100 +lat_0=42.5 +lat_1=25 +lat_2=60 +x_0=0 +y_0=0 +R=6378137 +f=298.257223563 +units=m +no_defs"
-    geoxyProj = CRS.from_proj4(geoxy_proj_str)
-    # EPSG: 4326
-    # Proj4: +proj=longlat +datum=WGS84 +no_defs
-    lonlatProj = CRS.from_epsg(4326) # in lon/lat coordinates
-    Txy2lonlat = Transformer.from_proj(geoxyProj, lonlatProj, always_xy=True)
-    Tlonlat2xy = Transformer.from_proj(lonlatProj, geoxyProj, always_xy=True)
-
-    XC_LCC, YC_LCC = Tlonlat2xy.transform(XC,YC)
-    
     # add the gridcell IDs.
     total_gridcells = total_rows * total_cols
     grid_ids = np.linspace(0, total_gridcells-1, total_gridcells, dtype=int)
@@ -279,32 +256,18 @@ def domain_save_2dTES(output_path, total_rows, total_cols, data, lon, lat, XC, Y
     #create land gridcell mask, area, and landfrac (otherwise 0)
     mask = np.where(~np.isnan(data[0]), 1, 0)
 
-    # area in km2 --> in arcrad2
-    '''
-    area_km2 = 16.0  # 4km by 4 km resolution
-    side_km = math.sqrt(float(area_km2))
-    #lat[lat==90.0]=lat[lat==90.0]-0.00001
-    #lat[lat==-90.0]=lat[lat==-90.0]-0.00001
-    kmratio_lon2lat = np.cos(np.radians(lat))
-    re_km = 6378.137
-    yscalar = side_km/(math.pi*re_km/180.0)
-    xscalar = side_km/(math.pi*re_km/180.0*kmratio_lon2lat)
-    area = xscalar*yscalar
-    '''
-    
     #  need to use the lon-lat bounding box to calculate the area
     lon_offset = abs((lon[0]-lon[1])/2)
     lat_offset = abs((lat[0]-lat[1])/2)
 
     landfrac = mask.astype(float)*1.0
-
-    file_name = output_path + 'domain.lnd.Daymet_GSWP3_TESSFA.4km.2d.c' + formatted_date + '.nc'
+    file_name = output_path  + 'domain.lnd.' + domain_name + '.4km.2d.c'+ formatted_date +'.nc'
     print("The 2D domain file is " + file_name)
 
     # Open a new NetCDF file to write the domain information. For format, you can choose from
     # 'NETCDF3_CLASSIC', 'NETCDF3_64BIT', 'NETCDF4_CLASSIC', and 'NETCDF4'
     w_nc_fid = nc.Dataset(file_name, 'w', format='NETCDF4')
-    w_nc_fid.title = '2D domain file for the TESSFA region'
+    w_nc_fid.title = '2D domain file for ' + domain_name
 
     # create the gridIDs, lon, and lat variable
     x_dim = w_nc_fid.createDimension('ni', total_cols)
@@ -361,31 +324,13 @@ def domain_save_2dTES(output_path, total_rows, total_cols, data, lon, lat, XC, Y
     w_nc_fid.variables['xv'][3,...] = xv3
     w_nc_fid.variables['yv'][3,...] = yv3
 
-    area_arcad2, area_km2 = calculate_area(xv0, yv0, xv1, yv1, xv2, yv2, xv3, yv3)
+    area_arcad2 = calculate_area(xv0, yv0, xv1, yv1, xv2, yv2, xv3, yv3)
     
-    # create the XC_LCC, YC_LCC variable
-    w_nc_var = w_nc_fid.createVariable('xc_LCC', np.float32, ('nj','ni'))
-    w_nc_var.long_name = 'X of land gridcell center (Lambert Conformal Conic), increasing from west to east'
-    w_nc_var.units = "m"
-    #w_nc_var.bounds = "xv" ;    
-    w_nc_fid.variables['xc_LCC'][:] = XC_LCC
-        
-    w_nc_var = w_nc_fid.createVariable('yc_LCC', np.float32, ('nj','ni'))
-    w_nc_var.long_name = 'Y of land gridcell center (Lambert Conformal Conic), decreasing from north to south'
-    w_nc_var.units = "m"        
-    w_nc_fid.variables['yc_LCC'][:] = YC_LCC
-
     w_nc_var = w_nc_fid.createVariable('area', np.double, ('nj','ni'))
     w_nc_var.long_name = 'Area of land gridcells'
     w_nc_var.coordinate = 'xc yc' 
     w_nc_var.units = "arcad^2"
     w_nc_fid.variables['area'][...] = area_arcad2
-
-    w_nc_var = w_nc_fid.createVariable('area_LCC', np.double, ('nj','ni'))
-    w_nc_var.long_name = 'Area of land gridcells (Lambert Conformal Conic)'
-    w_nc_var.coordinate = 'xc_LCC yc_LCC' 
-    w_nc_var.units = "km^2"
-    w_nc_fid.variables['area_LCC'][:] = area_km2
 
     w_nc_var = w_nc_fid.createVariable('mask', np.int32, ('nj','ni'))
     w_nc_var.long_name = 'mask of land gridcells (1 means land)'
@@ -398,64 +343,65 @@ def domain_save_2dTES(output_path, total_rows, total_cols, data, lon, lat, XC, Y
     w_nc_var.units = "unitless" ;        
     w_nc_fid.variables['frac'][:] = landfrac  
 
-
-    w_nc_var = w_nc_fid.createVariable('lambert_conformal_conic', np.short)
-    w_nc_var.grid_mapping_name = "lambert_conformal_conic"
-    w_nc_var.longitude_of_central_meridian = -100. 
-    w_nc_var.latitude_of_projection_origin = 42.5         
-    w_nc_var.false_easting = 0. 
-    w_nc_var.false_northing = 0.
-    w_nc_var.standard_parallel = 25., 60.          
-    w_nc_var.semi_major_axis = 6378137.
-    w_nc_var.inverse_flattening = 298.257223563
-
     w_nc_fid.close()  # close the new file  
 
+
+def main():
+    args = sys.argv[1:]
     
-input_path= './'
-file_name = 'TES_TBOT0.nc'
-output_path = input_path
-number_of_subdomains = 1
-timesteps = 1
-var_name = 'TBOT'
-period= "2014"
+    if len(sys.argv) != 5  or sys.argv[1] == '--help':  # sys.argv includes the script name as the first argument
+        print("Example use: python TES_domainGEN.py <input_path> <input_filename> <output_path> <domain_name>")
+        print(" <input_path>: path to the input source data directory")
+        print(" <input_filename>: the name of input data")
+        print(" <output_path>:  path for the domain output")
+        print(" <domain_name>:  output domain name")
+        print(" The code uses TESSFA source data to generation 1D and 2D domain files")              
+        exit(0)
+    
+    input_path = args[0]
+    if not input_path.endswith("/"): input_path=input_path+'/'
+    input_filename = args[1]
+    output_path = args[2]
+    if not output_path.endswith("/"): output_path=output_path+'/'
+    domain_name = args[3]
+
+    #input_path= './'
+    #file_name = 'TES_BOT_domain1.nc'
+    #output_path = input_path
+    timesteps = 1
+    var_name = 'TBOT'
 
 
-    #print('number of subdomains: ('+ str(number_of_subdomains) + \
-    #      '), timeseries: ('+ str(i_timesteps) + '), file_name: (' + file_name + \
-    #      '), input_path : (' + input_path + ')')
+    start = process_time()
+    full_input = input_path + input_filename
 
-start = process_time()
-file_name = input_path + file_name
+    r_nc_fid = nc.Dataset(full_input, 'r', format='NETCDF4')
 
-r_nc_fid = nc.Dataset(file_name, 'r', format='NETCDF4')
-
-total_cols = r_nc_fid.dimensions['lon'].size
-total_rows = r_nc_fid.dimensions['lat'].size
-total_timesteps = r_nc_fid.dimensions['time'].size
-lon = r_nc_fid['lon']
-lat = r_nc_fid['lat']
-XC, YC = np.meshgrid(lon, lat)  # the array is (y,x) to match the mask
+    total_cols = r_nc_fid.dimensions['lon'].size
+    total_rows = r_nc_fid.dimensions['lat'].size
+    total_timesteps = r_nc_fid.dimensions['time'].size
+    lon = r_nc_fid['lon']
+    lat = r_nc_fid['lat']
+    XC, YC = np.meshgrid(lon, lat)  # the array is (y,x) to match the mask
     #YX = np.array([Y, X])
     #print('total timesteps is :' + str(total_timesteps))
-if timesteps == -1:
-    timesteps = total_timesteps
-data = r_nc_fid[var_name][0:timesteps, :, :] # read (timestep, y, x) format
+    data = r_nc_fid[var_name][0:timesteps, :, :] # read (timestep, y, x) format
 
-print(lon.shape, lat.shape, XC.shape, YC.shape, XC.dtype) 
+    print(lon.shape, lat.shape, XC.shape, YC.shape, XC.dtype) 
 
-end = process_time()
-print("Reading " + file_name + " takes  {}".format(end-start))
+    end = process_time()
+    print("Reading " + input_filename + " takes  {}".format(end-start))
 
-start = process_time()
-domain_save_2dTES(output_path, total_rows, total_cols, data, lon, lat, XC, YC)
-end = process_time()
-print("Saving 2D domain data takes {}".format(end-start))
+    start = process_time()
+    domain_save_2dTES(output_path, domain_name, total_rows, total_cols, data, lon, lat, XC, YC)
+    end = process_time()
+    print("Saving 2D domain data takes {}".format(end-start))
     
+    start = process_time() 
+    domain_save_1dTES(output_path, domain_name, total_rows, total_cols, data, lon, lat, XC, YC)
+    end = process_time()
 
-start = process_time() 
-domain_save_1dTES(output_path, total_rows, total_cols, data, lon, lat, XC, YC)
-end = process_time()
+    print("Saving 1D domain data takes {}".format(end-start))
 
-print("Saving 1D domain data takes {}".format(end-start))
-
+if __name__ == '__main__':
+    main()
