@@ -141,12 +141,12 @@ def domain_save_1dTES(output_path, domain_name, total_rows, total_cols, data, lo
     nv_dim = w_nc_fid.createDimension('nv', 4)
 
     w_nc_var = w_nc_fid.createVariable('gridID', np.int32, ('nj','ni'))
-    w_nc_var.long_name = 'gridId in the NA domain'
+    w_nc_var.long_name = 'gridId in the TESSFA domain'
     w_nc_var.decription = "start from #0 at the upper left corner of the domain, covering all land and ocean gridcells" 
     w_nc_fid.variables['gridID'][...] = grid_id_arr
 
     w_nc_var = w_nc_fid.createVariable('gridXID', np.int32, ('nj','ni'))
-    w_nc_var.long_name = 'gridId x in the NA domain'
+    w_nc_var.long_name = 'gridId x in the TESSFA domain'
     w_nc_var.decription = "start from #0 at the upper left corner and from west to east of the domain, with gridID=gridXID+gridYID*x_dim" 
     w_nc_fid.variables['gridXID'][...] = grid_xids_arr
 
@@ -287,7 +287,7 @@ def domain_save_2dTES(output_path, domain_name, total_rows, total_cols, data, lo
     w_nc_fid['nj'][...] = np.copy(YC[:,0])
 
     w_nc_var = w_nc_fid.createVariable('gridID', np.int32, ('nj','ni'))
-    w_nc_var.long_name = 'gridId in the NA domain'
+    w_nc_var.long_name = 'gridId in the TESSFA domain'
     w_nc_var.decription = "start from #0 at the upper left corner of the domain and row by row, covering all land and ocean gridcells. " \
                           "So gridID=xid+yid*ni" 
     w_nc_fid.variables['gridID'][:] = grid_ids 
