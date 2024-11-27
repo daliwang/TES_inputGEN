@@ -14,7 +14,7 @@ def forcing_save_1dTES(input_path, file, var_name, period, time, output_path):
     # Open a new NetCDF file to write the data to. For format, you can choose from
     # 'NETCDF3_CLASSIC', 'NETCDF3_64BIT', 'NETCDF4_CLASSIC', and 'NETCDF4'
     source_file = input_path + '/'+ file
-    src = nc.Dataset(source_file, 'r', format='NETCDF4')
+    src = nc.Dataset(source_file, 'r', format='NETCDF3_64BIT')
     
     # Parse the filename into separate substrings
     parts = file.split('.')
@@ -100,7 +100,7 @@ def forcing_save_1dTES(input_path, file, var_name, period, time, output_path):
 
     # Open a new NetCDF file to write the data to. For format, you can choose from
     # 'NETCDF3_CLASSIC', 'NETCDF3_64BIT', 'NETCDF4_CLASSIC', and 'NETCDF4'
-    dst = nc.Dataset(dst_name, 'w', format='NETCDF4')
+    dst = nc.Dataset(dst_name, 'w', format='NETCDF3_64BIT')
     dst.title = var_name + '('+period+') creted from '+ input_path +' on ' +formatted_date
 
     # create the gridIDs, lon, and lat variable
@@ -108,7 +108,8 @@ def forcing_save_1dTES(input_path, file, var_name, period, time, output_path):
     x = dst.createDimension('ni', grid_id_arr.size)
     x = dst.createDimension('nj', 1)
 
-    w_nc_var = dst.createVariable('gridID', np.int32, ('nj','ni'), zlib=True, complevel=5)
+    fill_value = np.int32(-9999)
+    w_nc_var = dst.createVariable('gridID', np.int32, ('nj','ni'), fill_value=fill_value, zlib=True, complevel=5)
     #  set variable attributes
     w_nc_var.long_name = "gridId in the NA domain" ;
     w_nc_var.decription = "Covers all land and ocean gridcells, with #0 at the upper left corner of the domain" ;
@@ -116,12 +117,16 @@ def forcing_save_1dTES(input_path, file, var_name, period, time, output_path):
 
     # Copy the variables from the source to the target
 
-    
     for name, variable in src.variables.items():
         #if (name == var_name):
         start = process_time()
         print("Working on varibale: "+ name + " dimensions: " + str(variable.dimensions))
-        
+       
+        if variable.datatype == np.int32:
+            fill_value = -9999  # or any other value that you want to use to represent missing data
+        if variable.datatype == np.float32:
+            fill_value = np.float32(-9999)  # or any other value that you want to use to represent missing data
+
         # Check if the last two dimensions are lat and lon and save the data 
         
         if (variable.dimensions[-2:] == ('lat', 'lon') ) :
@@ -139,11 +144,12 @@ def forcing_save_1dTES(input_path, file, var_name, period, time, output_path):
             w_nc_var = dst.createVariable(name, np.float32, ('time', 'nj', 'ni'), zlib=True, complevel=5)
             dst.variables[name][:] =data_arr.reshape(time,grid_id_arr.size)
             for attr_name in variable.ncattrs():
-                dst[name].setncattr(attr_name, variable.getncattr(attr_name))
-        
+                if attr_name != '_FillValue':  # Skip the _FillValue attribute
+                    dst[name].setncattr(attr_name, variable.getncattr(attr_name))
+                    
         if (name == 'time'):
             dvname = 'time'
-            w_nc_var = dst.createVariable(dvname, np.float32, ('time'), zlib=True, complevel=5)
+            w_nc_var = dst.createVariable(dvname, np.float32, ('time'), fill_value=fill_value, zlib=True, complevel=5)
             dst.variables[dvname][...] = data_time
             for attr_name in variable.ncattrs():
                 if 'units' in attr_name:
@@ -153,14 +159,14 @@ def forcing_save_1dTES(input_path, file, var_name, period, time, output_path):
 
         if (name == 'lat'):
             dvname = 'LATIXY'
-            w_nc_var = dst.createVariable(dvname, np.float64, ('nj','ni'), zlib=True, complevel=5)
+            w_nc_var = dst.createVariable(dvname, np.float64, ('nj','ni'),fill_value=fill_value,  zlib=True, complevel=5)
             dst.variables[dvname][...] = latxy_arr
             for attr_name in variable.ncattrs():
                 dst[dvname].setncattr(attr_name, variable.getncattr(attr_name))
 
         if (name == 'lon'):
             dvname = 'LONGXY'
-            w_nc_var = dst.createVariable(dvname, np.float64, ('nj','ni'), zlib=True, complevel=5)
+            w_nc_var = dst.createVariable(dvname, np.float64, ('nj','ni'), fill_value=fill_value, zlib=True, complevel=5)
             dst.variables[dvname][...] = lonxy_arr
             for attr_name in variable.ncattrs():
                 dst[dvname].setncattr(attr_name, variable.getncattr(attr_name))
@@ -169,7 +175,7 @@ def forcing_save_1dTES(input_path, file, var_name, period, time, output_path):
     dst.close()  # close the new file        
     
 
-'''
+'''i
 #input_path = "/gpfs/wolf2/cades/cli185/proj-shared/Daymet_GSWP3_4KM_TESSFA/netcdf/2014/TPHWL3Hrly/"
 #input_path = "/gpfs/wolf2/cades/cli185/proj-shared/Daymet_GSWP3_4KM_TESSFA/"
 #input_path = "/gpfs/wolf2/cades/cli185/proj-shared/Daymet_GSWP3_4KM_TESSFA/netcdf/2014/Solar3Hrly/"
@@ -199,11 +205,11 @@ def main():
     args = sys.argv[1:]
 
     if len(sys.argv) != 4  or sys.argv[1] == '--help':  # sys.argv includes the script name as the first argument
-        print("Example use: python NA_forcingGEN.py <input_path> <output_path> <time steps>")
+        print("Example use: python TES_forcingGEN.py <input_path> <output_path> <time steps>")
         print(" <input_path>: path to the 1D source data directory")
         print(" <output_path>:  path for the 1D AOI forcing data directory")
         print(" <time steps>: timesteps to be processed or -1 (all time series)")
-        print(" The code converts 2D NA forcing inot  1D NA forcing")              
+        print(" The code converts 2D TES forcing inot  1D TES forcing")              
         exit(0)
 
     input_path = args[0]
