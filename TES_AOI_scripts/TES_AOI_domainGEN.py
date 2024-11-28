@@ -42,7 +42,7 @@ def main():
         print("Example use: python TES_AOI_domainGEN.py <input_path> <output_path> <AOI_points_file>")
         print(" <input_path>: path to the AOI_points_file")
         print(" <output_path>:  path for the 1D AOI output data directory")
-        print(" <AOI_points_file>:  <AOI>_gridID.csv or <AOI>_xcyc.csv or <AOI>_xcyc_lcc.csv")
+        print(" <AOI_points_file>:  <AOI>_gridID.nc (or.csv) or <AOI>_xcyc.csv or <AOI>_xcyc_lcc.csv")
         print(" The code uses TES domain (./domain.lnd.TES_SE.4km.1d.c<yymmdd>.nc) to generation 1D AOI domain.nc")      
         exit(0)
     
@@ -60,7 +60,7 @@ def main():
     AOI=AOI_gridcell_file.split("_")[0]
     '''
     AOI=AOI_gridcell_file.split("_")[0]
-    AOI_gridcell_file = input_path + AOI_gridcell_file    
+    AOI_gridcell_file = output_path + AOI_gridcell_file    
 
     if 'gridID' in AOI_gridcell_file:
         user_option = 1
