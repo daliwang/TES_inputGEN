@@ -43,7 +43,7 @@ plt.show()
 
 # Step 4: Plot the array using imshow
 plt.figure(figsize=(12, 6))
-plt.imshow(active_array, origin='upper', extent=(x_coords.min(), x_coords.max(), y_coords.min(), y_coords.max()), cmap='gray')
+plt.imshow(reshaped_active_array, origin='lower', extent=(x_coords.min(), x_coords.max(), y_coords.min(), y_coords.max()), cmap='gray')
 plt.colorbar(label='Active Cells (1 = Active, 0 = Inactive)')
 plt.title('Active Grid Cell Representation')
 plt.xlabel('Longitude (degrees)')
