@@ -34,8 +34,19 @@ for file in files:
         else:
             link_name = os.path.basename(file)
 
+        prefix = "clmforc."
+        suffix = ".1d"
+        replacement = "Daymet.km"
+
+        # Find the start and end indices for slicing
+        start_index = len(prefix)  # Length of "clmforc."
+        end_index = link_name.find(suffix)  # Find where ".1d" is located
+
+        # Construct the new link_name
+        new_link_name = link_name[:start_index] + replacement + link_name[end_index:]
+
         # Create a soft link in the target directory
-        link_path = os.path.join(path, link_name)
+        link_path = os.path.join(path, new_link_name)
 
         #command = f'ln -s "{file}" "{link_path}"'
         #print(command)
