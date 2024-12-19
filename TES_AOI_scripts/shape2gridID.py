@@ -17,11 +17,23 @@ current_date = datetime.now()
 # Format date to mmddyyyy
 formatted_date = current_date.strftime('%y%m%d')
 
-# Load the Tennessee shapefile
-tn_shapefile_path = 'NRCSTATE_tn/state_nrcs_a_tn.shp'  # replace with the actual path to your shapefile
-tn_shape = gpd.read_file(tn_shapefile_path)
+# set up the AOI name and Load the shapefile
+AOI='TVA'
+shapefile_path = 'tva_boundary.shp'  # replace with the actual path to your shapefile
 
-AOI='TN'
+shape = gpd.read_file(shapefile_path)
+
+print('CRS', shape.crs)
+# Define the target CRS (EPSG:4326, which is the TESSFA_ERA5 CRS)
+elm_crs = "EPSG:4326"
+
+# Check and convert the CRS if necessary
+if shape.crs != elm_crs:
+    print(f"Shapefile CRS is {shape.crs}. Converting to {elm_crs}...")
+    shape = shape.to_crs(elm_crs)
+else:
+    print(f"Shapefile is already in {elm_crs}.")
+
 
 # save to the gridID  file
 AOI_gridID = str(AOI)+'_gridID.c'+ formatted_date + '.nc'
@@ -45,25 +57,24 @@ grid_cells = gpd.GeoDataFrame({
 # Set the same coordinate reference system (CRS) as the shapefile
 grid_cells.set_crs(epsg=4326, inplace=True)
 
-# Check which grid cells are within the TN shape
-grid_cells_within_tn = grid_cells[grid_cells['geometry'].within(tn_shape.unary_union)]
+# Check which grid cells are within the TVA shape
+grid_cells_within_AOI = grid_cells[grid_cells['geometry'].within(shape.unary_union)]
 
 # Get the list of gridIDs that are inside Tennessee
-grid_ids_within_tn = grid_cells_within_tn['gridID'].values
+grid_ids_within_AOI = grid_cells_within_AOI['gridID'].values
 
 # Print the resulting grid IDs
-print("Grid IDs within Tennessee:", grid_ids_within_tn
-        )
+print("Grid IDs within " + AOI +":", grid_ids_within_AOI)
 
 # create the gridIDs, lon, and lat variable
-ni_dim = dst.createDimension('ni', grid_ids_within_tn.size)
+ni_dim = dst.createDimension('ni', grid_ids_within_AOI.size)
 nj_dim = dst.createDimension('nj', 1)
 
 gridID_var = dst.createVariable('gridID', np.int32, ('nj','ni'), zlib=True, complevel=5)
 gridID_var.long_name = 'gridId in the TESSFA2 domain'
 gridID_var.decription = "start from #0 at the upper left corner of the domain, covering all land and ocean gridcells" 
-dst.variables['gridID'][...] = grid_ids_within_tn
-dst.title = 'TN land gridcells in the TESSFA2 domain'
+dst.variables['gridID'][...] = grid_ids_within_AOI
+dst.title = AOI +' land gridcells in the TESSFA2 domain'
 
 dst.close()
 
