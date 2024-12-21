@@ -3,7 +3,11 @@ import os,sys
 import netCDF4 as nc
 import numpy as np
 from time import process_time
-from datetime import datetime
+from datetime import datetime, timedelta
+
+def is_leap_year(year):
+    """ Check if a given year is a leap year. """
+    return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
 # Get current date
 current_date = datetime.now()
@@ -36,7 +40,7 @@ def forcing_save_1dTES(input_path, file, var_name, period, time, output_path):
     lonxy, latxy = np.meshgrid(lon, lat)
 
     #print(lonxy.shape)
-
+    '''
     # time in 'days since ' current yyyy-mm-01-01 00:00:00
     data_time = src['time'][0:time] # read (time, y, x) format
     tunit = src.variables['time'].getncattr('units')  # Kao's data is with datetime of leap-year 
@@ -60,6 +64,47 @@ def forcing_save_1dTES(input_path, file, var_name, period, time, output_path):
     if(tunit.endswith(' 00') and not tunit.endswith(' 00:00:00')):
         tunit=tunit+':00:00'
     
+    '''
+
+    # Assuming src['time'] is already provided and contains the number of days since a reference date
+
+    # Sample code for time variable transformation:
+    time_variable = src['time'][:]  # Read full time variable
+    tunit = src.variables['time'].getncattr('units')  # Expected format: "days since 1950-01-01 00:00:00"
+    print(tunit[10:])
+    
+    t0 = datetime.strptime(tunit[11:], '%Y-%m-%d %H:%M:%S')  # Parse the reference time
+    
+    # Initialize an output array for the days of the current month
+    days_in_month = np.zeros_like(time_variable, dtype=float)
+    months = np.zeros_like(time_variable, dtype=int)  # Store month indices
+
+    # Reference handling for each year
+    for i, days_since in enumerate(time_variable):
+        # Calculate the full year based on total days since t0
+        year = t0.year + int(days_since // 365.25)  # Using 365.25 for average leap year calculation
+        current_date = t0 + timedelta(days=float(days_since))  # Current date from base date
+
+        # Handle the end of year transition
+        if current_date.year > year:
+            year += 1
+
+        # Get the month and the day of the month
+        month = current_date.month
+        day = current_date.day
+
+        # Store month and day information
+        months[i] = month
+        #days_in_month[i] = day
+        # Instead of storing days, calculate times for 8 intervals per day
+        days_in_month[i] = (day-1)  + (1.5 + (i%8) *3 )/24
+
+    # Prepare the output time units in the required format
+    new_time_unit = f"days since {int(year)}-{str(month).zfill(2)}-01 00:00:00"
+
+    # Example for how to update the data_time output
+    data_time = days_in_month  # This now holds the day of the current month
+
     # Get mask and create gridID, latxy, lonxy first
     
     for name, variable in src.variables.items():
@@ -153,7 +198,7 @@ def forcing_save_1dTES(input_path, file, var_name, period, time, output_path):
             dst.variables[dvname][...] = data_time
             for attr_name in variable.ncattrs():
                 if 'units' in attr_name:
-                    dst[dvname].units = tunit
+                    dst[dvname].units = new_time_unit
                 else:
                     dst[dvname].setncattr(attr_name, variable.getncattr(attr_name))
 
