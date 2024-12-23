@@ -29,6 +29,9 @@ def forcing_save_1dTES(input_path, file, var_name, period, time, output_path):
     total_rows = src.dimensions['lon'].size
     total_cols = src.dimensions['lat'].size
     total_time = src.dimensions['time'].size
+    # remove the leap day 
+    if total_time == 232:
+            total_time = 224
 
     #print('total timesteps is :' + str(total_timesteps))
     if time == -1:
@@ -70,6 +73,10 @@ def forcing_save_1dTES(input_path, file, var_name, period, time, output_path):
 
     # Sample code for time variable transformation:
     time_variable = src['time'][:]  # Read full time variable
+
+    # remove the leap day
+    if (len(time_variable)) == 232:
+        time_variable = time_variable[0:224]
     tunit = src.variables['time'].getncattr('units')  # Expected format: "days since 1950-01-01 00:00:00"
     print(tunit[10:])
     
@@ -199,6 +206,8 @@ def forcing_save_1dTES(input_path, file, var_name, period, time, output_path):
             for attr_name in variable.ncattrs():
                 if 'units' in attr_name:
                     dst[dvname].units = new_time_unit
+                elif 'calendar' in attr_name:
+                    dst[dvname].calendar = "no_leap"                     
                 else:
                     dst[dvname].setncattr(attr_name, variable.getncattr(attr_name))
 
