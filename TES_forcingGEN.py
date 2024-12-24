@@ -89,14 +89,16 @@ def forcing_save_1dTES(input_path, file, var_name, period, time, output_path):
     # Reference handling for each year
     for i, days_since in enumerate(time_variable):
         # Calculate the full year based on total days since t0
-        year = t0.year + int(days_since // 365.25)  # Using 365.25 for average leap year calculation
         current_date = t0 + timedelta(days=float(days_since))  # Current date from base date
-
+        '''
+        year = t0.year + int(days_since // 365.25)  # Using 365.25 for average leap year calculation
         # Handle the end of year transition
-        if current_date.year > year:
+        if (current_date.year > year):
             year += 1
+        '''
 
-        # Get the month and the day of the month
+        # Get the year, month, and the day of the month
+        year = current_date.year
         month = current_date.month
         day = current_date.day
 
