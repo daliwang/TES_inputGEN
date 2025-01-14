@@ -1,5 +1,4 @@
 
-
 ### This file uses a shapefile (GIS) to create a list of gridIDs from a large domain
 ### These gridIDs are used by kiloCraft to create user-defined domain/surfdata/forcing for ELM simulations 
 
@@ -33,11 +32,11 @@ def shape2grid(shapefile_path, aoi_name):
         print(f"Shapefile is already in {elm_crs}.")
 
     # save to the gridID  file
-    AOI_gridID = f"{aoi_name}+'_gridID.c{formatted_date}.nc"
+    AOI_gridID = f"{aoi_name}_gridID.c{formatted_date}.nc"
     dst = nc.Dataset(AOI_gridID, 'w', format='NETCDF3_64BIT')
 
     # Load the NetCDF file
-    netcdf_file_path = '../../entire_domain/domain_surfdata/domain.lnd.TES_SE.4km.1d.c240827.nc'  # replace with the actual path to your NetCDF file
+    netcdf_file_path = 'domain.lnd.TES_SE.4km.1d.c240827.nc'  # replace with the actual path to your NetCDF file
     ds = xr.open_dataset(netcdf_file_path)
 
     # Extract the xc and yc coordinates and the gridID
@@ -82,5 +81,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     
-    main(args.shapefile_path, args.aoi_name)
+    shape2grid(args.shapefile_path, args.aoi_name)
+
+
+
+
 
