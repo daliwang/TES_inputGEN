@@ -54,10 +54,10 @@ while True:
         # Step 5: Plot the data
         # Use a pcolormesh or imshow depending on the type of plot you want
 
-        x_min =  200
-        x_max =  500
-        y_min =  150
-        y_max =  500
+        x_min =  1  # 200
+        x_max =  len(x_coords) # 500
+        y_min =  1  # 150
+        y_max =  len(y_coords) # 500
 
         # Create new x and y coordinates for the subdomain
         sub_x_coords = x_coords[x_min-1:x_max]  # Since x_coords is 1-indexed
