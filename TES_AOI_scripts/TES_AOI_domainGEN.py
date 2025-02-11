@@ -60,7 +60,7 @@ def main():
     AOI=AOI_gridcell_file.split("_")[0]
     '''
     AOI=AOI_gridcell_file.split("_")[0]
-    AOI_gridcell_file = output_path + AOI_gridcell_file    
+    AOI_gridcell_file = input_path +'/'+ AOI_gridcell_file    
 
     if 'gridID' in AOI_gridcell_file:
         user_option = 1
@@ -76,7 +76,7 @@ def main():
     if os.path.exists(AOIdomain):
         os.remove(AOIdomain)
 
-    source_file = input_path +'/domain.lnd.TES_SE.4km.1d.c240827.nc'
+    source_file = './domain.lnd.TES_SE.4km.1d.nc'
     dst = nc.Dataset(AOIdomain, 'w', format='NETCDF3_64BIT')
 
     # open the 1D domain data
@@ -179,7 +179,7 @@ def main():
 
     AOI_mask = np.isin(TES_gridcell_arr, AOI_points_arr)
 
-    #domain_idx = np.sort(domain_idx).squeeze()
+    domain_idx = np.sort(domain_idx)
 
     print("gridID_idx", domain_idx.shape, domain_idx[0:20])
     
