@@ -40,9 +40,32 @@ while True:
         break  # Exit the loop if the user types 'exit'
     
     try:
-        variable_data = data_dataset.variables[variable_name][:]  # Get the data variable
-        variable_data = variable_data.compressed()  # Assuming same compression as gridID
+        variable = data_dataset.variables[variable_name][:]  # Get the data variable
+        variable_data = variable[:]  # Get the data variable
         
+        # Handle time dimension if present
+        if variable_data.ndim == 3:
+            time_dim = variable_data.shape[0]
+            print(f"Variable '{variable_name}' has {time_dim} time steps (0 to {time_dim-1}).")
+            time_step = int(input(f"Enter the time step to visualize (0 to {time_dim-1}): "))
+            if not (0 <= time_step < time_dim):
+                print("Invalid time step. Skipping.")
+                continue
+            variable_data = variable_data[time_step]
+            print(f"Visualizing {variable_name} at time step {time_step}.")
+        elif variable_data.ndim == 2:
+            # No time dimension, use as is
+            pass
+        else:
+            print("Variable has unsupported number of dimensions.")
+            continue
+
+        # If variable is a masked array, compress it
+        if hasattr(variable_data, 'compressed'):
+            variable_data = variable_data.compressed()
+
+
+
         # Step 4: Create a masked version of the variable data
         masked_variable_data = np.full(active_array.shape, np.nan)  # Fill with NaN
         for i, grid_id in enumerate(gridID):
@@ -52,10 +75,15 @@ while True:
         # Step 5: Plot the data
         # Use a pcolormesh or imshow depending on the type of plot you want
 
-        x_min = 200
+        '''x_min = 200
         x_max = 500
         y_min = 200
-        y_max = 500
+        y_max = 500'''
+        # show the whole domain
+        x_min = 1
+        x_max = len(x_coords)
+        y_min = 1
+        y_max = len(y_coords)
 
         # Create new x and y coordinates for the subdomain
         sub_x_coords = x_coords[x_min-1:x_max]  # Since x_coords is 1-indexed

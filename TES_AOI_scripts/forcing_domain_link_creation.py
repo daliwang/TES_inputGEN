@@ -58,8 +58,9 @@ for file in files:
         else:
             print(f"Link {link_path} already exists, skipping.")
 
-
+files = glob.glob('../domain_surfdata/*')
 for file in files:
+    print(file)
     # Check if 'domain' is in the file name
     if '_domain.lnd' in file:
         # Construct the new link_name
