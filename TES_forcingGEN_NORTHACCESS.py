@@ -22,7 +22,8 @@ def forcing_save_1dTES(input_path, file, var_name, period, time, output_path):
     
     # Parse the filename into separate substrings
     parts = file.split('.')
-    parts.insert(1, 'TES_NORTHACCESS.1d')
+    parts.insert(1, 'TES_NORTHACCESS')
+    parts.insert(3, '1d')
     # Join the parts back together to form the new filename
     new_filename = '.'.join(parts)
     print('new filename is: ' + new_filename)
