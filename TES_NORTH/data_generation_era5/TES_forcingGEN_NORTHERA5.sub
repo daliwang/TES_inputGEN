@@ -1,0 +1,43 @@
+#!/bin/bash
+#SBATCH -A CLI185
+#SBATCH -J TES_forcingGEN
+#SBATCH -p batch_ccsi
+#SBATCH -N 1
+#SBATCH -t 24:00:00
+#SBATCH --mem=500GB
+
+
+time_steps="-1"
+
+module load python/3.11-anaconda3
+source activate /ccsopen/home/wangd/compEnv
+
+TES_inputGEN_path="/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_cases_data/Daymet_ERA5_TESSFA_NORTH/entire_domain/scripts/"
+cd ${TES_inputGEN_path}
+date_string=$(date +'%y%m%d-%H%M')
+
+# create forcing from Daymet and ERA5
+DATASETID="Daymet_ERA5_TESSFA_NORTH"
+
+TES_forcing_path="/gpfs/wolf2/cades/cli185/world-shared/e3sm/inputdata/atm/datm7/Daymet_ERA5_TESSFA1"
+#TES_forcing_path="./temp"
+
+forcing_output_path=/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_cases_data/$DATASETID/entire_domain/forcing/
+#forcing_output_path="./forcing/"
+
+# Check if the directory exists
+if [ -d "$forcing_output_path" ]; then
+    echo "Directory exists. Removing all files and subdirectories..."
+    # Remove all files and subdirectories under the specified directory
+    rm -rf "$forcing_output_path"/*
+    echo "All files and subdirectories have been removed."
+else
+    echo "Directory does not exist."
+    mkdir ${forcing_output_path}
+fi
+
+echo ${TES_forcing_path} ${forcing_output_path} ${time_steps} ${DATASETID}
+
+srun -n 1 python3 TES_forcingGEN_NORTHERA5.py ${TES_forcing_path} ${forcing_output_path} ${time_steps} ${DATASETID} >& ./${DATASETID}_forcinggen.log.${date_string}
+
+#python3 TES_forcingGEN_NORTHERA5.py ${TES_forcing_path} ${forcing_output_path} ${time_steps} ${DATASETID}
