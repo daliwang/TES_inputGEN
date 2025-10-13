@@ -25,9 +25,9 @@ for file in files:
     # Only process actual files
     if not os.path.isfile(file):
         continue
+    # Accept both 'clmforc' and 'climforc' in the filename
     base_name = os.path.basename(file)
-    # Accept both 'clmforc' and 'climforc' generated filenames
-    if base_name.startswith('clmforc') or base_name.startswith('climforc'):
+    if ('clmforc' in base_name) or ('climforc' in base_name):
         # Build the link name to start with "clmforc.Daymet.km" and
         # then append everything from the first occurrence of ".1d" onward
         suffix = ".1d"
