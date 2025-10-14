@@ -43,6 +43,12 @@ def main() -> int:
     p.add_argument("--dpi", type=int, default=150, help="Output DPI. Default: 150")
     p.add_argument("--year-digits", type=int, choices=[4, 5], default=4, help="Digits for year in filename. Default: 4")
     p.add_argument(
+        "--vars-to-plot",
+        nargs="+",
+        default=["GPP", "FSDS", "FLDS", "TBOT", "RH2M"],
+        help="Space-separated variable names to plot. Default: GPP FSDS FLDS TBOT RH2m",
+    )
+    p.add_argument(
         "--show2d-script",
         default="/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_inputGEN/TES_AOI_scripts/Show2DVariablesBatch.py",
         help="Path to Show2DVariablesBatch.py",
@@ -58,10 +64,7 @@ def main() -> int:
         return 0
 
     for nc_file in files:
-        vars_to_plot = detect_time_vars(nc_file)
-        if not vars_to_plot:
-            print(f"[warn] No time-varying variables found in {nc_file}; skipping")
-            continue
+        vars_to_plot = args.vars_to_plot
 
         prefix = os.path.splitext(os.path.basename(nc_file))[0]
 
