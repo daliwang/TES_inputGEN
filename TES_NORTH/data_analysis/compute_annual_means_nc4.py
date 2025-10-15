@@ -191,6 +191,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     p.add_argument('--output', '-o', required=True, help='Output directory for per-year files.')
     p.add_argument('--compress-level', '-c', type=int, default=5, help='Compression level (0 disables). Default: 5.')
     p.add_argument('--allow-missing-months', action='store_true', help='Allow years with <12 months; weight by available months.')
+    p.add_argument('--start-year', type=int, default=None, help='Inclusive start year to process (optional).')
+    p.add_argument('--end-year', type=int, default=None, help='Inclusive end year to process (optional).')
     args = p.parse_args(argv)
 
     input_files = expand_input_patterns(args.inputs)
@@ -205,6 +207,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     os.makedirs(args.output, exist_ok=True)
 
+    # Validate year range if provided
+    if args.start_year is not None and args.end_year is not None and args.start_year > args.end_year:
+        print('[error] --start-year cannot be greater than --end-year.', file=sys.stderr)
+        return 5
+
     # Use first file as reference for dimensions/vars
     ref_file = next(iter(sorted(input_files)))
     var_meta, dim_sizes = get_reference_metadata(ref_file)
@@ -215,7 +222,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     case_stub = infer_case_stub(ref_file)
 
-    for year in sorted(year_map.keys()):
+    # Filter years to requested range
+    all_years = sorted(year_map.keys())
+    years_to_process = [
+        y for y in all_years
+        if (args.start_year is None or y >= args.start_year) and (args.end_year is None or y <= args.end_year)
+    ]
+    if not years_to_process:
+        print('[warn] No years to process after applying range filter.', file=sys.stderr)
+        return 0
+
+    for year in years_to_process:
         files = year_map[year]
         # Parse month index for weights
         months: List[int] = []

@@ -97,3 +97,32 @@ python3 /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_inputGEN/TES_NO
 
 The script invokes `Show2DVariablesBatch.py` at:
 `/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_inputGEN/TES_AOI_scripts/Show2DVariablesBatch.py`.
+
+### PNG: plot variable × area; GeoTIFF: multi-band export
+`Show2DVariablesBatch.py` supports plotting values multiplied by gridcell area for PNGs, and exporting richer GeoTIFFs with multiple bands.
+
+PNG with variable × area (e.g., `carbon_loss` × `area`):
+```bash
+python3 /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_inputGEN/TES_AOI_scripts/Show2DVariablesBatch.py \
+  --mask /path/to/mask.nc \
+  --data /path/to/carbon_loss_YEAR.nc \
+  --vars carbon_loss \
+  --output-dir /path/to/plots \
+  --png-multiply-by-area \
+  --time-index 0
+```
+
+GeoTIFF export with extra bands:
+```bash
+python3 /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_inputGEN/TES_AOI_scripts/Show2DVariablesBatch.py \
+  --mask /path/to/mask.nc \
+  --data /path/to/carbon_loss_YEAR.nc \
+  --vars carbon_loss \
+  --export-geotiff --tiff-dir /path/to/geotiff \
+  --tiff-include-area --tiff-include-product \
+  --time-index 0
+```
+
+- `--png-multiply-by-area`: PNG shows variable × area (for visualizing total amount per cell).
+- `--tiff-include-area`: add `area` as band 2 in the GeoTIFF.
+- `--tiff-include-product`: add `(variable × area)` as another band. If omitted, GeoTIFF band 1 is the raw variable.

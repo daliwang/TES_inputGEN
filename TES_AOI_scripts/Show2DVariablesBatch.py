@@ -30,6 +30,11 @@ def parse_args():
     p.add_argument('--y-max', type=int, default=None, help='1-based y end for subdomain (inclusive). Default: full')
     p.add_argument('--year-digits', type=int, choices=[4, 5], default=4, help='Digits for year in filename (4 or 5). Default: 4')
     p.add_argument('--year', type=int, default=None, help='Explicit year override for filenames.')
+    p.add_argument('--export-geotiff', action='store_true', help='Also write GeoTIFFs alongside PNGs (requires lon/lat).')
+    p.add_argument('--tiff-dir', default=None, help='Output directory for GeoTIFFs (defaults to output-dir).')
+    p.add_argument('--png-multiply-by-area', action='store_true', help='Multiply plotted values by area for PNG export only.')
+    p.add_argument('--tiff-include-area', action='store_true', help='Include area as an extra band in GeoTIFF.')
+    p.add_argument('--tiff-include-product', action='store_true', help='Include (variable x area) as an extra band in GeoTIFF.')
     return p.parse_args()
 
 
@@ -50,6 +55,20 @@ def load_mask(mask_path: str):
             flattened_active_array[gid] = 1
     reshaped_active_array = flattened_active_array.reshape(active_array.shape)
     return ds, x_coords, y_coords, gridID, reshaped_active_array
+
+
+def get_units(ds: nc.Dataset, var_name: str) -> str | None:
+    if var_name not in ds.variables:
+        return None
+    v = ds.variables[var_name]
+    for k in ('units', 'Units', 'unit', 'UNIT'):
+        try:
+            u = getattr(v, k)
+            if isinstance(u, str) and u.strip():
+                return u.strip()
+        except Exception:
+            pass
+    return None
 
 
 def read_variable(data_ds: nc.Dataset, var_name: str, time_index: int) -> np.ndarray:
@@ -102,6 +121,85 @@ def map_to_2d(gridID: np.ndarray, values1d: np.ndarray, shape2d: tuple) -> np.nd
     return out
 
 
+def write_geotiff(out_path: str, x2d: np.ndarray, y2d: np.ndarray, data2d: np.ndarray) -> None:
+    try:
+        import rasterio
+        from rasterio.transform import from_bounds
+    except Exception:
+        print('[warn] rasterio not available; skipping GeoTIFF export')
+        return
+
+    # Build bounds and affine from x/y coordinates assuming regular grid
+    x = np.asarray(x2d[0, :], dtype=float)
+    y = np.asarray(y2d[:, 0], dtype=float)
+    xmin, xmax = float(np.nanmin(x)), float(np.nanmax(x))
+    ymin, ymax = float(np.nanmin(y)), float(np.nanmax(y))
+    width = x.size
+    height = y.size
+    transform = from_bounds(xmin, ymin, xmax, ymax, width, height)
+
+    profile = {
+        'driver': 'GTiff',
+        'height': int(height),
+        'width': int(width),
+        'count': 1,
+        'dtype': 'float32',
+        'crs': 'EPSG:4326',  # assumes lon/lat degrees
+        'transform': transform,
+        'compress': 'deflate',
+        'tiled': True,
+        'blockxsize': 256,
+        'blockysize': 256,
+    }
+
+    with rasterio.open(out_path, 'w', **profile) as dst:
+        dst.write(np.asarray(data2d, dtype=np.float32), 1)
+
+
+def write_geotiff_bands(out_path: str, x2d: np.ndarray, y2d: np.ndarray, bands: list, descriptions: list | None = None) -> None:
+    try:
+        import rasterio
+        from rasterio.transform import from_bounds
+    except Exception:
+        print('[warn] rasterio not available; skipping GeoTIFF export')
+        return
+
+    if not bands:
+        print('[warn] No bands provided for GeoTIFF export')
+        return
+
+    x = np.asarray(x2d[0, :], dtype=float)
+    y = np.asarray(y2d[:, 0], dtype=float)
+    xmin, xmax = float(np.nanmin(x)), float(np.nanmax(x))
+    ymin, ymax = float(np.nanmin(y)), float(np.nanmax(y))
+    width = x.size
+    height = y.size
+    transform = from_bounds(xmin, ymin, xmax, ymax, width, height)
+
+    profile = {
+        'driver': 'GTiff',
+        'height': int(height),
+        'width': int(width),
+        'count': int(len(bands)),
+        'dtype': 'float32',
+        'crs': 'EPSG:4326',
+        'transform': transform,
+        'compress': 'deflate',
+        'tiled': True,
+        'blockxsize': 256,
+        'blockysize': 256,
+    }
+
+    with rasterio.open(out_path, 'w', **profile) as dst:
+        for idx, band in enumerate(bands, start=1):
+            dst.write(np.asarray(band, dtype=np.float32), idx)
+        if descriptions:
+            try:
+                dst.set_descriptions(tuple(descriptions))
+            except Exception:
+                pass
+
+
 def main() -> int:
     args = parse_args()
 
@@ -145,6 +243,21 @@ def main() -> int:
             else:
                 year_tag = f"t{args.time_index:03d}"
 
+            # Optionally load area (1D values aligned to active cells) for PNG multiplication and/or GeoTIFF bands
+            area1d = None
+            area_var_name = None
+            if args.png_multiply_by_area or args.tiff_include_area or args.tiff_include_product:
+                for aname in ('area', 'AREA', 'AREA_GRID'):
+                    if aname in data_ds.variables:
+                        try:
+                            tmp = read_variable(data_ds, aname, args.time_index)
+                            if tmp is not None:
+                                area1d = np.asarray(tmp, dtype=float)
+                                area_var_name = aname
+                                break
+                        except Exception:
+                            continue
+
             for var_name in args.vars:
                 if var_name not in data_ds.variables:
                     print(f"[warn] Variable not found: {var_name}")
@@ -155,24 +268,81 @@ def main() -> int:
                     print(f"[warn] Skipping {var_name}: {e}")
                     continue
 
-                # Map to 2D domain
+                # Map to 2D domain for plotting and export
                 data2d = map_to_2d(gridID, values1d, shape2d)
                 sub_data = data2d[y0:y1, x0:x1]
 
+                # PNG: optionally multiply by area
+                plot_data = sub_data
+                label_name = var_name
+                name_core = var_name
+                base_units = get_units(data_ds, var_name)
+                units_label = base_units
+                if args.png_multiply_by_area and area1d is not None and area1d.size == values1d.size:
+                    area2d = map_to_2d(gridID, area1d, shape2d)
+                    plot_data = (area2d[y0:y1, x0:x1] * sub_data)
+                    label_name = f"{var_name} x area"
+                    name_core = f"{var_name}_xarea"
+                    area_units = get_units(data_ds, area_var_name) if area_var_name else None
+                    if base_units and area_units:
+                        units_label = f"{base_units} * {area_units}"
+                    elif base_units:
+                        units_label = f"{base_units} * area"
+                    elif area_units:
+                        units_label = area_units
+
                 plt.figure(figsize=(8, 6), dpi=args.dpi)
-                mesh = plt.pcolormesh(sub_x, sub_y, sub_data, shading='auto', cmap=args.cmap, vmin=args.vmin, vmax=args.vmax)
-                plt.colorbar(mesh, label=var_name)
-                plt.title(f'{var_name} (t={args.time_index})')
+                mesh = plt.pcolormesh(sub_x, sub_y, plot_data, shading='auto', cmap=args.cmap, vmin=args.vmin, vmax=args.vmax)
+                cbar_label = f"{label_name} [{units_label}]" if units_label else label_name
+                plt.colorbar(mesh, label=cbar_label)
+                plt.title(f'{label_name} (t={args.time_index})')
                 plt.xlabel('X Coordinates')
                 plt.ylabel('Y Coordinates')
 
                 prefix = (args.prefix + '_') if args.prefix else ''
-                out_name = f"{prefix}{var_name}_{year_tag}.png"
+                out_name = f"{prefix}{name_core}_{year_tag}.png"
                 out_path = os.path.join(args.output_dir, out_name)
                 plt.tight_layout()
                 plt.savefig(out_path, dpi=args.dpi)
                 plt.close()
                 print(f"[write] {out_path}")
+
+                # Optional GeoTIFF export (requires lon/lat in data file)
+                if args.export_geotiff:
+                    try:
+                        lon1d = read_variable(data_ds, 'lon', args.time_index)
+                        lat1d = read_variable(data_ds, 'lat', args.time_index)
+                    except Exception:
+                        lon1d, lat1d = None, None
+                    if lon1d is None or lat1d is None:
+                        print('[warn] lon/lat not found in data file; skipping GeoTIFF export')
+                    else:
+                        lon2d_full = map_to_2d(gridID, np.asarray(lon1d), shape2d)
+                        lat2d_full = map_to_2d(gridID, np.asarray(lat1d), shape2d)
+                        lon2d = lon2d_full[y0:y1, x0:x1]
+                        lat2d = lat2d_full[y0:y1, x0:x1]
+                        tiff_dir = args.tiff_dir or args.output_dir
+                        os.makedirs(tiff_dir, exist_ok=True)
+                        tif_name = f"{prefix}{var_name}_{year_tag}.tif"
+                        tif_path = os.path.join(tiff_dir, tif_name)
+
+                        # Build GeoTIFF bands per flags (default: variable only, not multiplied)
+                        bands = [sub_data]
+                        band_names = [var_name]
+                        if args.tiff_include_area and area1d is not None and area1d.size == values1d.size:
+                            area2d = map_to_2d(gridID, area1d, shape2d)
+                            bands.append(area2d[y0:y1, x0:x1])
+                            band_names.append('area')
+                        if args.tiff_include_product and area1d is not None and area1d.size == values1d.size:
+                            area2d = map_to_2d(gridID, area1d, shape2d)
+                            bands.append((area2d[y0:y1, x0:x1] * sub_data))
+                            band_names.append(f'{var_name}_x_area')
+
+                        if len(bands) == 1:
+                            write_geotiff(tif_path, lon2d, lat2d, bands[0])
+                        else:
+                            write_geotiff_bands(tif_path, lon2d, lat2d, bands, band_names)
+                        print(f"[write] {tif_path}")
         finally:
             data_ds.close()
     finally:
