@@ -2,6 +2,7 @@
 import argparse
 import os
 import re
+import rasterio
 
 import numpy as np
 import netCDF4 as nc

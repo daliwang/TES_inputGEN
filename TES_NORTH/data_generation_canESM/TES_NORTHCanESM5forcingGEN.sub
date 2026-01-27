@@ -1,0 +1,87 @@
+#!/bin/bash
+#SBATCH -A CLI185
+#SBATCH -J TES_forcingGEN_CanESM5
+#SBATCH -p batch_ccsi
+#SBATCH -N 1
+#SBATCH -t 48:00:00
+#SBATCH --mem=500GB
+
+# Mode and resources:
+# - Test: 1 case, 20 years, time_steps=1
+#   sbatch TES_NORTHCanESM5forcingGEN.sub
+# - Production: 4 cases in parallel, time_steps=-1
+#   sbatch -N 4 --export=MODE=prod TES_NORTHCanESM5forcingGEN.sub
+#
+# Optional overrides for test:
+#   sbatch --export=MODE=test,TEST_CASE_INDEX=2,TEST_START_YEAR=1980,TEST_YEAR_COUNT=20 TES_NORTHCanESM5forcingGEN.sub
+MODE="${MODE:-test}"
+if [ "${MODE}" = "prod" ]; then
+  time_steps="-1"
+else
+  time_steps="1"
+  TEST_CASE_INDEX="${TEST_CASE_INDEX:-0}"
+  TEST_START_YEAR="${TEST_START_YEAR:-1980}"
+  TEST_YEAR_COUNT="${TEST_YEAR_COUNT:-20}"
+  TEST_END_YEAR=$((TEST_START_YEAR + TEST_YEAR_COUNT - 1))
+fi
+
+module load python/3.11-anaconda3
+source activate /ccsopen/home/wangd/compEnv
+
+BASE_INPUT="/gpfs/wolf2/cades/cli185/proj-shared/wangd/canESM5"
+BASE_OUTPUT="/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_cases_data"
+SCRIPT_DIR="/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_inputGEN/TES_NORTH/data_generation_canESM"
+
+date_string=$(date +'%y%m%d-%H%M')
+
+cases=(
+  "CanESM5_1pctCO2-bgc_r1i1p1f1_DBCCA_Daymet_TESSFA1"
+  "CanESM5_historical_r1i1p1f1_DBCCA_Daymet_TESSFA1"
+  "CanESM5_piControl_r1i1p1f1_DBCCA_Daymet_TESSFA1"
+  "CanESM5_ssp585_r1i1p1f1_DBCCA_Daymet_TESSFA1"
+)
+
+scripts=(
+  "TES_forcingGEN_NORTHCanESM5_1pctCO2-bgc_r1i1p1f1_DBCCA_Daymet_TESSFA1.py"
+  "TES_forcingGEN_NORTHCanESM5_historical_r1i1p1f1_DBCCA_Daymet_TESSFA1.py"
+  "TES_forcingGEN_NORTHCanESM5_piControl_r1i1p1f1_DBCCA_Daymet_TESSFA1.py"
+  "TES_forcingGEN_NORTHCanESM5_ssp585_r1i1p1f1_DBCCA_Daymet_TESSFA1.py"
+)
+
+run_case () {
+  local EXPID="$1"
+  local SCRIPT="$2"
+  local TES_forcing_path="${BASE_INPUT}/${EXPID}"
+  local forcing_output_path="${BASE_OUTPUT}/${EXPID}/forcing"
+
+  echo "Running ${EXPID}"
+  echo "Input:  ${TES_forcing_path}"
+  echo "Output: ${forcing_output_path}"
+
+  mkdir -p "${forcing_output_path}"
+
+  cd "${SCRIPT_DIR}"
+  srun -n 1 --exclusive python3 "${SCRIPT}" "${TES_forcing_path}" "${forcing_output_path}" "${time_steps}" \
+    >& "${SCRIPT_DIR}/${EXPID}_forcinggen.log.${date_string}"
+}
+
+if [ "${MODE}" = "prod" ]; then
+  for i in "${!cases[@]}"; do
+    run_case "${cases[$i]}" "${scripts[$i]}" &
+  done
+  wait
+else
+  idx="${TEST_CASE_INDEX}"
+  EXPID="${cases[$idx]}"
+  SCRIPT="${scripts[$idx]}"
+  TES_forcing_path="${BASE_INPUT}/${EXPID}"
+  forcing_output_path="${BASE_OUTPUT}/${EXPID}/forcing_test_${TEST_START_YEAR}_${TEST_END_YEAR}"
+
+  echo "Test mode: case index ${idx}"
+  echo "Test years: ${TEST_START_YEAR}-${TEST_END_YEAR}"
+  mkdir -p "${forcing_output_path}"
+  cd "${SCRIPT_DIR}"
+  srun -n 1 --exclusive python3 "${SCRIPT}" "${TES_forcing_path}" "${forcing_output_path}" "${time_steps}" \
+    "${TEST_START_YEAR}" "${TEST_END_YEAR}" \
+    >& "${SCRIPT_DIR}/${EXPID}_forcinggen.test.log.${date_string}"
+fi

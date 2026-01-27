@@ -3,23 +3,30 @@
 #SBATCH -J TES_forcingGEN
 #SBATCH -p batch_ccsi
 #SBATCH -N 1
-#SBATCH -t 24:00:00
+#SBATCH -t 1:00:00
 #SBATCH --mem=500GB
 
 
 time_steps="-1"
 
-module load python/3.11-anaconda3
-source activate /ccsopen/home/wangd/compEnv
+#module load python/3.11-anaconda3
+#source activate /ccsopen/home/wangd/compEnv
+module load miniforge3
+source /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/python_test_env/activate_shared_env.sh
+
 
 TES_inputGEN_path="/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_inputGEN/"
 cd ${TES_inputGEN_path}
 date_string=$(date +'%y%m%d-%H%M')
 
-EXPID="Daymet_ERA5_TESSFA2"
-TES_forcing_path="/gpfs/wolf2/cades/cli185/proj-shared/TESSFA/Daymet_ERA5_TESSFA2/"
+#EXPID="Daymet_ERA5_TESSFA2"
+#TES_forcing_path="/gpfs/wolf2/cades/cli185/proj-shared/TESSFA/Daymet_ERA5_TESSFA2/"
+#forcing_output_path=/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_cases_data/$EXPID/forcing/
 
-forcing_output_path=/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_cases_data/$EXPID/forcing/
+EXPID="Daymet_ERA5_TESSFA2_2024"
+TES_forcing_path="/gpfs/wolf2/cades/cli185/proj-shared/wangd/TESSFA_forcing/Daymet_ERA5_TESSFA2/2024Data"
+forcing_output_path="/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_cases_data/$EXPID/forcing/"
+#forcing_output_path="/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_inputGEN/temp"
 
 # Check if the directory exists
 if [ -d "$forcing_output_path" ]; then
@@ -34,6 +41,8 @@ fi
 
 echo ${TES_forcing_path} ${forcing_output_path} ${time_steps}
 
-srun -n 1 python3 TES_forcingGEN.py ${TES_forcing_path} ${forcing_output_path} ${time_steps} >& ./${EXPID}_forcinggen.log.${date_string}
+srun -n 1 /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/python_test_env/conda_envs/testvenv/bin/python TES_forcingGEN.py ${TES_forcing_path} ${forcing_output_path} ${time_steps} >& ./${EXPID}_forcinggen.log.${date_string}
+
+#/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/python_test_env/conda_envs/testvenv/bin/python TES_forcingGEN.py ${TES_forcing_path} ${forcing_output_path} ${time_steps} >& ./${EXPID}_forcinggen.log.${date_string}
 
 
