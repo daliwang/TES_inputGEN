@@ -45,6 +45,25 @@ sbatch --export=MODE=test,TEST_CASE_INDEX=2,TEST_START_YEAR=1980,TEST_YEAR_COUNT
 sbatch -N 4 --export=MODE=prod TES_NORTHCanESM5forcingGEN.sub
 ```
 
+### Commands and instructions
+
+- Quick test (default case index 0, 1980-1999, time_steps=1):
+```
+sbatch /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_inputGEN/TES_NORTH/data_generation_canESM/TES_NORTHCanESM5forcingGEN.sub
+```
+- Quick test with overrides (single case, 20 years):
+```
+sbatch --export=MODE=test,TEST_CASE_INDEX=2,TEST_START_YEAR=1980,TEST_YEAR_COUNT=20 \
+  /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_inputGEN/TES_NORTH/data_generation_canESM/TES_NORTHCanESM5forcingGEN.sub
+```
+- Production run (4 nodes, all timesteps):
+```
+sbatch -N 4 --export=MODE=prod \
+  /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_inputGEN/TES_NORTH/data_generation_canESM/TES_NORTHCanESM5forcingGEN.sub
+```
+- Slurm output appears as `slurm-<jobid>.out` in the submission directory unless redirected by Slurm defaults.
+- Case logs are written to this folder as `<EXPID>_forcinggen*.log.<timestamp>`.
+
 ### Output locations
 
 - Test outputs: `/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_cases_data/<EXPID>/forcing_test_<start>_<end>/`

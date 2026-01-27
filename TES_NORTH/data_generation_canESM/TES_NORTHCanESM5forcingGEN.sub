@@ -3,7 +3,7 @@
 #SBATCH -J TES_forcingGEN_CanESM5
 #SBATCH -p batch_ccsi
 #SBATCH -N 1
-#SBATCH -t 48:00:00
+#SBATCH -t 24:00:00
 #SBATCH --mem=500GB
 
 # Mode and resources:
